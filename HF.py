@@ -63,6 +63,10 @@ def compute_correlation(eigs, v, mu=0):
     correlation[:, :, 0, 1] = np.sum(v[0::2, mask].conj() * v[1::2, mask], axis=1).reshape(W, L)
     correlation[:, :, 1, 0] = np.sum(v[1::2, mask].conj() * v[0::2, mask], axis=1).reshape(W, L)
     correlation[:, :, 1, 1] = np.sum(v[1::2, mask].conj() * v[1::2, mask], axis=1).reshape(W, L)
+
+
+    #correlation_test = v @ np.diag(mask) @ v.conj().T
+    
     return correlation
 
 # Model Parameters

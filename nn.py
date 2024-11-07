@@ -109,8 +109,8 @@ for iteration in range(99):
     # Make system with new correlations
     new_H = make_system(correlation, n_orbs).finalized().hamiltonian_submatrix(sparse=False)
 
-    # Mix with old system for stability
-    H = 0.2 * H + 0.8 * new_H
+    ## Mix with old system for stability
+    #H = 0.2 * H + 0.8 * new_H
 
     # solve
     eigs, eigv = np.linalg.eigh(H)

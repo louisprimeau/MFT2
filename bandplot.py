@@ -55,11 +55,12 @@ def band_plot(fig, ax, syst, point_names, N, **kwargs):
 
 def bandfold(old_syst, n_x, n_y, lattice_vectors_old, x_coordinates_old, old_lat):
 
-    n_sublattices_old = lattice_vectors_old.shape[1]
+    n_sublattices_old = x_coordinates_old.shape[0]
     lattice_vector_x = lattice_vectors_old[:, 0] * n_x
     lattice_vector_y = lattice_vectors_old[:, 1] * n_y
-    n_sublattices = x_coordinates_old.shape[1] * n_x * n_y
+    n_sublattices = x_coordinates_old.shape[0] * n_x * n_y
     lattice_vectors = np.vstack((lattice_vector_x, lattice_vector_y))
+
     x_coordinates = []
     for i in range(n_x):
         for j in range(n_y):
@@ -70,38 +71,47 @@ def bandfold(old_syst, n_x, n_y, lattice_vectors_old, x_coordinates_old, old_lat
     lat = kwant.lattice.general(lattice_vectors, norbs=n_orbs, basis=x_coordinates)
     sym = kwant.TranslationalSymmetry(lat.vec((1, 0)), lat.vec((0, 1)))
     new_syst = kwant.Builder(sym)
-
+    
     supercell_hoppings = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1)]
     # in unit cell
     for s in range(n_x * n_y * n_sublattices_old):
-        l_s = s % 2
-        W_s = (s // 2) % n_x
-        L_s = ((s // 2) - W_s) // n_x 
+        l_s = s % n_sublattices_old
+        W_s = (s // n_sublattices_old) % n_x
+        L_s = ((s // n_sublattices_old) - W_s) // n_x 
         W_s += n_x; L_s += n_y
-        new_syst[lat.sublattices[s](0,0)] = old_syst[old_lat.sublattices[l_s](W_s, L_s)]
 
+        new_sublattice = s // n_sublattices_old
+        new_syst[lat.sublattices[new_sublattice](0, 0)] = old_syst[old_lat.sublattices[l_s](W_s, L_s)]
+    
     for s in range(n_x * n_y * n_sublattices_old):
         for t in range(n_x * n_y * n_sublattices_old):
             if s == t: continue
-            l_s = s % 2; W_s = (s // 2) % n_x; L_s = ((s // 2) - W_s) // n_x
+            l_s = s % n_sublattices_old; W_s = (s // n_sublattices_old) % n_x; L_s = ((s // n_sublattices_old) - W_s) // n_x
             W_s += n_x; L_s += n_y
-            l_t = t % 2; W_t = (t // 2) % n_x; L_t = ((t // 2) - W_t) // n_x
+            l_t = t % n_sublattices_old; W_t = (t // n_sublattices_old) % n_x; L_t = ((t // n_sublattices_old) - W_t) // n_x
             W_t += n_x; L_t += n_y
+
+            new_sublattice_s = s // n_sublattices_old
+            new_sublattice_t = t // n_sublattices_old
+            
             try:
-                new_syst[lat.sublattices[s](0,0), lat.sublattices[t](0,0)] = old_syst[old_lat.sublattices[l_s](W_s,L_s), old_lat.sublattices[l_t](W_t,L_t)]
+                new_syst[lat.sublattices[new_sublattice_s](0,0), lat.sublattices[new_sublattice_t](0,0)] = old_syst[old_lat.sublattices[l_s](W_s,L_s), old_lat.sublattices[l_t](W_t,L_t)]
             except KeyError:
                 continue
-            
     for s in range(n_x * n_y * n_sublattices_old):
         for t in range(n_x * n_y * n_sublattices_old):
             for h_x, h_y in supercell_hoppings:
-                l_s = s % 2; W_s = (s // 2) % n_x; L_s = ((s // 2) - W_s) // n_x
+                l_s = s % n_sublattices_old; W_s = (s // n_sublattices_old) % n_x; L_s = ((s // n_sublattices_old) - W_s) // n_x
                 W_s += n_x; L_s += n_y
-                l_t = t % 2; W_t = (t // 2) % n_x; L_t = ((t // 2) - W_t) // n_x
+                l_t = t % n_sublattices_old; W_t = (t // n_sublattices_old) % n_x; L_t = ((t // n_sublattices_old) - W_t) // n_x
                 W_t += (h_x+1 ) * n_x; L_t += (h_y + 1) * n_y
+                new_sublattice_s = s // n_sublattices_old
+                new_sublattice_t = t // n_sublattices_old
+
                 try:
-                    new_syst[lat.sublattices[s](0,0), lat.sublattices[t](h_x,h_y)] = old_syst[old_lat.sublattices[l_s](W_s,L_s), old_lat.sublattices[l_t](W_t,L_t)]
+                    new_syst[lat.sublattices[new_sublattice_s](0,0), lat.sublattices[new_sublattice_t](h_x, h_y)] = old_syst[old_lat.sublattices[l_s](W_s,L_s), old_lat.sublattices[l_t](W_t,L_t)]
                 except KeyError:
                     continue
     
-    return new_syst
+    return new_syst, n_orbs, n_sublattices, lattice_vectors, x_coordinates, lat
+
